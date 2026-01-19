@@ -28,13 +28,14 @@ We present LongLive, a frame-level autoregressive (AR) framework for real-time a
 1. [News](#news)
 2. [Highlights](#highlights)
 3. [Introduction](#introduction)
-4. [Installation](#installation)
-5. [Inference](#inference)
-6. [Training](#training)
-7. [How to contribute](#how-to-contribute)
-8. [Citation](#citation)
-9. [License](#license)
-10. [Acknowledgement](#acknowledgement)
+4. [RunPod Serverless Deployment](#runpod-serverless-deployment)
+5. [Installation](#installation)
+6. [Inference](#inference)
+7. [Training](#training)
+8. [How to contribute](#how-to-contribute)
+9. [Citation](#citation)
+10. [License](#license)
+11. [Acknowledgement](#acknowledgement)
 
 ## News
 - [x] [2026.1.11] Many thanks @qixinhu11 for adapting LongLive's original RoPE into KV-cache relative RoPE. Now LongLive supports generating infinite long videos!
@@ -77,6 +78,139 @@ We present LongLive, a frame-level autoregressive (AR) framework for real-time a
 <strong>Interactive 60s videos with 6 prompts. See our demo <a href="https://nvlabs.github.io/LongLive"><strong>Website</strong></a> for video examples.</strong>
 </p>
 
+## RunPod Serverless Deployment
+
+Deploy LongLive as a serverless API endpoint on RunPod for on-demand video generation.
+
+### Features
+- **Serverless API**: Pay only for compute time used
+- **Lazy Model Loading**: Models download on first run and persist to network volume
+- **Auto-scaling**: Handles variable workloads automatically
+- **GPU Support**: Requires A100-80GB or H100
+
+### Quick Deploy via RunPod GitHub Integration
+
+1. **Fork this repository** or use [MushroomFleet/longlive-runpod](https://github.com/MushroomFleet/longlive-runpod)
+
+2. **Create a Network Volume** in RunPod Console:
+   - Go to Storage → Network Volumes → Create
+   - Size: 50GB minimum (100GB recommended)
+   - Region: Same as your endpoint
+
+3. **Create Serverless Endpoint**:
+   - Go to Serverless → New Endpoint
+   - Select **Import Git Repository**
+   - Connect your GitHub account
+   - Select the forked repository
+   - **Dockerfile Path**: `Dockerfile`
+   - **GPU Type**: A100-80GB or H100
+   - **Network Volume**: Mount at `/runpod-volume`
+   - Click Deploy
+
+4. **First Request** (~10-15 minutes):
+   - Downloads Wan2.1-T2V-1.3B model (~5-10GB)
+   - Downloads LongLive checkpoints (~5GB)
+   - Models persist to network volume
+
+5. **Subsequent Requests** (~2 minutes):
+   - Models loaded from network volume cache
+   - ~30-40 seconds for 120 frames (7.5s video)
+
+### API Usage
+
+**Input Schema:**
+```json
+{
+  "input": {
+    "prompt": "A cat playing with yarn in a sunny room",
+    "num_frames": 120,
+    "seed": 42,
+    "fps": 16
+  }
+}
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `prompt` | string | required | Text description of the video |
+| `num_frames` | int | 120 | Number of frames (3-1050, divisible by 3) |
+| `seed` | int | random | Random seed for reproducibility |
+| `fps` | int | 16 | Output video frame rate |
+
+**Output Schema:**
+```json
+{
+  "status": "success",
+  "video_base64": "<base64-encoded-mp4>",
+  "format": "mp4",
+  "fps": 16,
+  "num_frames": 120,
+  "resolution": "832x480",
+  "seed": 42
+}
+```
+
+**Example Request (curl):**
+```bash
+curl -X POST "https://api.runpod.ai/v2/{YOUR_ENDPOINT_ID}/runsync" \
+  -H "Authorization: Bearer ${RUNPOD_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": {
+      "prompt": "A majestic eagle soaring over snow-capped mountains at sunset",
+      "num_frames": 60,
+      "seed": 123
+    }
+  }'
+```
+
+**Example Request (Python):**
+```python
+import runpod
+import base64
+
+runpod.api_key = "your_api_key"
+
+endpoint = runpod.Endpoint("YOUR_ENDPOINT_ID")
+
+result = endpoint.run_sync({
+    "input": {
+        "prompt": "A futuristic city with flying cars at night",
+        "num_frames": 120,
+        "seed": 42
+    }
+})
+
+# Decode and save video
+if result["status"] == "success":
+    video_data = base64.b64decode(result["video_base64"])
+    with open("output.mp4", "wb") as f:
+        f.write(video_data)
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MODEL_CACHE_DIR` | `/runpod-volume/models` | Where models are cached |
+| `HF_HOME` | `/runpod-volume/huggingface` | HuggingFace cache directory |
+| `CUDA_VISIBLE_DEVICES` | `0` | GPU device index |
+
+### Troubleshooting
+
+**First request times out:**
+- Initial model download takes 10-15 minutes
+- Increase timeout or use async endpoint (`/run` instead of `/runsync`)
+
+**Out of memory error:**
+- Reduce `num_frames` parameter
+- Ensure using A100-80GB or H100 GPU
+
+**Models re-downloading on each cold start:**
+- Verify network volume is mounted at `/runpod-volume`
+- Check volume has sufficient space (50GB+)
+
+---
 
 ## Installation
 **Requirements**
