@@ -1,0 +1,51 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+README*
+LICENSE
+assets/
+example/
+
+# Training files (not needed for inference)
+train*.py
+train*.sh
+trainer/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+.eggs/
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs and outputs
+wandb/
+logs/
+videos/
+outputs/
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+
+# Local configs
+*.local.yaml
+.env
+
+# Pre-existing model downloads (will download fresh in container)
+wan_models/
+longlive_models/
