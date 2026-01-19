@@ -17,8 +17,12 @@ RUN apt-get update && apt-get install -y \
 # Use --ignore-installed to bypass distutils conflicts with base image packages
 COPY requirements.txt .
 RUN pip install --no-cache-dir --ignore-installed -r requirements.txt && \
-    pip install --no-cache-dir flash-attn --no-build-isolation && \
     pip install --no-cache-dir runpod
+
+# Install flash-attn from pre-built wheel (much faster than compiling from source)
+# This avoids the 20+ minute compilation that causes build timeouts
+RUN pip install --no-cache-dir flash-attn --no-build-isolation || \
+    pip install --no-cache-dir https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.3/flash_attn-2.7.3+cu124torch2.4cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 
 # Copy the LongLive codebase
 COPY . /app/
