@@ -14,8 +14,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
+# Use --ignore-installed to bypass distutils conflicts with base image packages
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && \
+RUN pip install --no-cache-dir --ignore-installed -r requirements.txt && \
     pip install --no-cache-dir flash-attn --no-build-isolation && \
     pip install --no-cache-dir runpod
 
